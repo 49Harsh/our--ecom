@@ -1,0 +1,128 @@
+version: '3.9'
+
+services:
+  # ──────────────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: recom_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: recom_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - recom_network
+
+  # ──────────────────────────────────────────────────
+  # Redis Cache & Queue
+  # ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: recom_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - recom_network
+
+  # ──────────────────────────────────────────────────
+  # Meilisearch (Product Search)
+  # ──────────────────────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: recom_meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-local-master-key}
+      MEILI_ENV: development
+    ports:
+      - '7700:7700'
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - recom_network
+
+  # ──────────────────────────────────────────────────
+  # NestJS API
+  # ──────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: development
+    container_name: recom_api
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/recom_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MEILISEARCH_HOST: http://meilisearch:7700
+    ports:
+      - '4000:4000'
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+      - /app/dist
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - recom_network
+    command: sh -c "npx prisma migrate deploy && npm run start:dev"
+
+  # ──────────────────────────────────────────────────
+  # Nginx Reverse Proxy
+  # ──────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: recom_nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - recom_network
+
+# ──────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
+  meilisearch_data:
+
+networks:
+  recom_network:
+    driver: bridge

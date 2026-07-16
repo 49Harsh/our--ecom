@@ -11,16 +11,26 @@ import { generateInvoiceNumber } from '../../common/utils/helpers.util';
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly razorpay: Razorpay;
+  private _razorpay: Razorpay | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {
-    this.razorpay = new Razorpay({
-      key_id: this.configService.get<string>('RAZORPAY_KEY_ID')!,
-      key_secret: this.configService.get<string>('RAZORPAY_KEY_SECRET')!,
-    });
+  ) {}
+
+  /** Lazy Razorpay instance — created on first use so missing keys don't crash startup */
+  private get razorpay(): Razorpay {
+    if (!this._razorpay) {
+      const keyId = this.configService.get<string>('RAZORPAY_KEY_ID');
+      const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
+      if (!keyId || !keySecret) {
+        throw new BadRequestException(
+          'Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env',
+        );
+      }
+      this._razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    }
+    return this._razorpay;
   }
 
   // ─── Create Razorpay Order ────────────────────────────────────────────────

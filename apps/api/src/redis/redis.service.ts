@@ -12,17 +12,31 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       host: this.configService.get('REDIS_HOST', 'localhost'),
       port: this.configService.get<number>('REDIS_PORT', 6379),
       password: this.configService.get('REDIS_PASSWORD') || undefined,
-      retryStrategy: (times) => Math.min(times * 50, 2000),
+      retryStrategy: (times) => {
+        if (times > 3) return null; // stop retrying after 3 attempts
+        return Math.min(times * 200, 2000);
+      },
+      enableOfflineQueue: false, // fail fast instead of queuing
+      lazyConnect: true,         // don't connect until first command
     });
   }
 
   async onModuleInit() {
-    this.client.on('connect', () => this.logger.log('Connected to Redis'));
-    this.client.on('error', (err) => this.logger.error('Redis error', err));
+    this.client.on('connect', () => this.logger.log('Connected to Redis ✅'));
+    this.client.on('error', (err) => {
+      // Log once as a warning — not as an unhandled fatal error
+      this.logger.warn(`Redis unavailable (some features like OTP/2FA caching will not work): ${err.message}`);
+    });
+    // Try to connect but swallow failure so server still starts
+    try {
+      await this.client.connect();
+    } catch {
+      this.logger.warn('Redis not available on startup — server will continue without it.');
+    }
   }
 
   async onModuleDestroy() {
-    await this.client.quit();
+    try { await this.client.quit(); } catch { /* ignore */ }
     this.logger.log('Redis connection closed');
   }
 

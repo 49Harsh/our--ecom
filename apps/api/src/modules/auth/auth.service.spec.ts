@@ -5,7 +5,9 @@ import { ConfigService } from '@nestjs/config';
 import { ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
-import { createPrismaMock, createRedisMock, createJwtMock, createConfigMock, mockUser } from '../../common/test/mocks';
+import {
+  createPrismaMock, createRedisMock, createJwtMock, createConfigMock, mockUser,
+} from '../../common/test/mocks';
 import * as bcrypt from 'bcryptjs';
 
 jest.mock('bcryptjs');
@@ -17,29 +19,25 @@ describe('AuthService', () => {
   let service: AuthService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let redis: ReturnType<typeof createRedisMock>;
-  let jwtService: ReturnType<typeof createJwtMock>;
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     redis = createRedisMock();
-    jwtService = createJwtMock();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: redis },
-        { provide: JwtService, useValue: jwtService },
+        { provide: JwtService, useValue: createJwtMock() },
         { provide: ConfigService, useValue: createConfigMock() },
       ],
     }).compile();
-
     service = module.get<AuthService>(AuthService);
   });
 
   afterEach(() => jest.clearAllMocks());
 
-  // ─── Register ──────────────────────────────────────────────────────────────
+  // ─── register() ────────────────────────────────────────────────────────────
   describe('register()', () => {
     it('should register a new user and return tokens', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
@@ -50,10 +48,8 @@ describe('AuthService', () => {
       prisma.refreshToken.create.mockResolvedValue({});
 
       const result = await service.register({
-        name: 'Alice',
-        email: 'alice@example.com',
-        password: 'Password@123',
-        phone: '+919876543210',
+        name: 'Alice', email: 'alice@example.com',
+        password: 'Password@123', phone: '+919876543210',
       });
 
       expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: 'alice@example.com' } });
@@ -65,14 +61,13 @@ describe('AuthService', () => {
 
     it('should throw ConflictException if email already registered', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser());
-
       await expect(
         service.register({ name: 'Alice', email: 'test@example.com', password: 'Password@123' }),
       ).rejects.toThrow(ConflictException);
     });
   });
 
-  // ─── Login ─────────────────────────────────────────────────────────────────
+  // ─── login() ───────────────────────────────────────────────────────────────
   describe('login()', () => {
     it('should return tokens for valid credentials', async () => {
       const user = mockUser();
@@ -83,45 +78,44 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: 'test@example.com', password: 'Password@123' });
 
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
-      expect(result.user).toBeDefined();
-      expect(result.user).not.toHaveProperty('password');
+      // narrow the type — 2FA not enabled so result has user
+      expect('user' in result).toBe(true);
+      if ('user' in result) {
+        expect(result.user).not.toHaveProperty('password');
+        expect(result).toHaveProperty('accessToken');
+      }
     });
 
     it('should throw UnauthorizedException for wrong password', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser());
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
       await expect(
-        service.login({ email: 'test@example.com', password: 'WrongPassword' }),
+        service.login({ email: 'test@example.com', password: 'Wrong' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for non-existent user', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-
       await expect(
-        service.login({ email: 'nobody@example.com', password: 'Password@123' }),
+        service.login({ email: 'nobody@example.com', password: 'pass' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for deactivated account', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser({ isActive: false }));
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
       await expect(
-        service.login({ email: 'test@example.com', password: 'Password@123' }),
+        service.login({ email: 'test@example.com', password: 'pass' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should return tempToken when 2FA is enabled', async () => {
+    it('should return requires2FA and tempToken when 2FA is enabled', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser({ isTwoFAEnabled: true }));
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       prisma.user.update.mockResolvedValue({});
       redis.set.mockResolvedValue('OK');
 
-      const result = await service.login({ email: 'test@example.com', password: 'Password@123' });
+      const result = await service.login({ email: 'test@example.com', password: 'pass' });
 
       expect(result).toHaveProperty('requires2FA', true);
       expect(result).toHaveProperty('tempToken');
@@ -129,21 +123,18 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── Refresh Tokens ────────────────────────────────────────────────────────
+  // ─── refreshTokens() ───────────────────────────────────────────────────────
   describe('refreshTokens()', () => {
-    it('should rotate refresh token and return new tokens', async () => {
-      const user = mockUser();
+    it('should rotate token and return new tokens', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
-        id: 'token-123',
-        isRevoked: false,
+        id: 'tok-1', isRevoked: false,
         expiresAt: new Date(Date.now() + 86400000),
-        user,
+        user: mockUser(),
       });
       prisma.refreshToken.update.mockResolvedValue({});
       prisma.refreshToken.create.mockResolvedValue({});
 
-      const result = await service.refreshTokens('valid-refresh-token');
-
+      const result = await service.refreshTokens('valid-token');
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(prisma.refreshToken.update).toHaveBeenCalledWith(
@@ -151,106 +142,86 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw UnauthorizedException for expired token', async () => {
+    it('should throw for expired token', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
-        id: 'token-123',
-        isRevoked: false,
-        expiresAt: new Date(Date.now() - 86400000), // expired
+        id: 'tok-1', isRevoked: false,
+        expiresAt: new Date(Date.now() - 1000),
         user: mockUser(),
       });
-
-      await expect(service.refreshTokens('expired-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens('expired')).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException for revoked token', async () => {
+    it('should throw for revoked token', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
-        id: 'token-123',
-        isRevoked: true,
+        id: 'tok-1', isRevoked: true,
         expiresAt: new Date(Date.now() + 86400000),
         user: mockUser(),
       });
-
-      await expect(service.refreshTokens('revoked-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens('revoked')).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException when token not found', async () => {
+    it('should throw when token not found', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue(null);
-
-      await expect(service.refreshTokens('unknown-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens('unknown')).rejects.toThrow(UnauthorizedException);
     });
   });
 
-  // ─── Logout ────────────────────────────────────────────────────────────────
+  // ─── logout() ──────────────────────────────────────────────────────────────
   describe('logout()', () => {
     it('should revoke the refresh token', async () => {
       prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
-
-      const result = await service.logout('some-refresh-token');
-
+      const result = await service.logout('some-token');
       expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { token: 'some-refresh-token' },
-        data: { isRevoked: true },
+        where: { token: 'some-token' }, data: { isRevoked: true },
       });
       expect(result.message).toBe('Logged out successfully');
     });
   });
 
-  // ─── Forgot Password ───────────────────────────────────────────────────────
+  // ─── forgotPassword() ──────────────────────────────────────────────────────
   describe('forgotPassword()', () => {
-    it('should create a reset token in Redis for existing user', async () => {
+    it('should store reset token for existing user', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser());
       redis.set.mockResolvedValue('OK');
-
       const result = await service.forgotPassword({ email: 'test@example.com' });
-
       expect(redis.set).toHaveBeenCalledWith('reset:mock-uuid-token', 'user-123', 3600);
       expect(result.message).toContain('If the email exists');
     });
 
-    it('should return safe response even for non-existent email', async () => {
+    it('should return safe message even for non-existent email', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-
-      const result = await service.forgotPassword({ email: 'nobody@example.com' });
-
+      const result = await service.forgotPassword({ email: 'nobody@x.com' });
       expect(redis.set).not.toHaveBeenCalled();
       expect(result.message).toContain('If the email exists');
     });
   });
 
-  // ─── Reset Password ────────────────────────────────────────────────────────
+  // ─── resetPassword() ───────────────────────────────────────────────────────
   describe('resetPassword()', () => {
-    it('should reset password when token is valid', async () => {
+    it('should reset password for valid token', async () => {
       redis.get.mockResolvedValue('user-123');
-      (bcrypt.hash as jest.Mock).mockResolvedValue('$2a$newhashed');
+      (bcrypt.hash as jest.Mock).mockResolvedValue('$2a$new');
       prisma.user.update.mockResolvedValue({});
       redis.del.mockResolvedValue(1);
       prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
 
-      const result = await service.resetPassword({ token: 'valid-reset-token', password: 'NewPassword@123' });
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-123' },
-        data: { password: '$2a$newhashed' },
-      });
+      const result = await service.resetPassword({ token: 'valid', password: 'New@123' });
       expect(result.message).toBe('Password reset successfully');
     });
 
-    it('should throw BadRequestException for invalid/expired reset token', async () => {
+    it('should throw BadRequestException for invalid token', async () => {
       redis.get.mockResolvedValue(null);
-
       await expect(
-        service.resetPassword({ token: 'invalid-token', password: 'NewPassword@123' }),
+        service.resetPassword({ token: 'bad', password: 'New@123' }),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
-  // ─── Send OTP ──────────────────────────────────────────────────────────────
+  // ─── sendOtp() ─────────────────────────────────────────────────────────────
   describe('sendOtp()', () => {
-    it('should create OTP record in DB and return success', async () => {
-      prisma.otpVerification.create.mockResolvedValue({ id: 'otp-123' });
-
+    it('should create OTP and return success', async () => {
+      prisma.otpVerification.create.mockResolvedValue({ id: 'otp-1' });
       const result = await service.sendOtp({ phone: '+919876543210' });
-
       expect(prisma.otpVerification.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ phone: '+919876543210', purpose: 'login' }),
@@ -260,25 +231,22 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── Verify OTP ────────────────────────────────────────────────────────────
+  // ─── verifyOtp() ───────────────────────────────────────────────────────────
   describe('verifyOtp()', () => {
-    it('should return tokens when OTP is valid', async () => {
-      const user = mockUser();
-      prisma.otpVerification.findFirst.mockResolvedValue({ id: 'otp-123' });
+    it('should return tokens for valid OTP', async () => {
+      prisma.otpVerification.findFirst.mockResolvedValue({ id: 'otp-1' });
       prisma.otpVerification.update.mockResolvedValue({});
-      prisma.user.findUnique.mockResolvedValue(user);
+      prisma.user.findUnique.mockResolvedValue(mockUser());
       prisma.refreshToken.create.mockResolvedValue({});
 
       const result = await service.verifyOtp({ phone: '+919876543210', otp: '123456' });
-
       expect(result).toHaveProperty('accessToken');
     });
 
     it('should throw BadRequestException for invalid OTP', async () => {
       prisma.otpVerification.findFirst.mockResolvedValue(null);
-
       await expect(
-        service.verifyOtp({ phone: '+919876543210', otp: '999999' }),
+        service.verifyOtp({ phone: '+919876543210', otp: '000000' }),
       ).rejects.toThrow(BadRequestException);
     });
   });

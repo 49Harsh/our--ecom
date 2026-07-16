@@ -21,10 +21,14 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Get approved reviews for a product' })
   getProductReviews(
     @Param('productId') productId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.reviewsService.getProductReviews(productId, page, limit);
+    return this.reviewsService.getProductReviews(
+      productId,
+      page  ? Number(page)  : 1,
+      limit ? Number(limit) : 10,
+    );
   }
 
   @Post('product/:productId')

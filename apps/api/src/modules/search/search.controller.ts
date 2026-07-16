@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards, HttpCode, HttpStatus, ParseIntPipe, DefaultValuePipe, Optional } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { SearchService } from './search.service';
 import { Public } from '../../common/decorators/public.decorator';
@@ -32,15 +32,27 @@ export class SearchController {
     @Query('category') category?: string,
     @Query('gender') gender?: string,
     @Query('brand') brand?: string,
-    @Query('minPrice') minPrice?: number,
-    @Query('maxPrice') maxPrice?: number,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
     @Query('size') size?: string,
     @Query('color') color?: string,
     @Query('sort') sort?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.searchService.search({ q, category, gender, brand, minPrice, maxPrice, size, color, sort, page, limit });
+    return this.searchService.search({
+      q,
+      category,
+      gender,
+      brand,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      size,
+      color,
+      sort,
+      page:  page  ? Number(page)  : 1,
+      limit: limit ? Number(limit) : 20,
+    });
   }
 
   @Get('suggestions')

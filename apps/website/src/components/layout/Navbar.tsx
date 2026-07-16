@@ -356,7 +356,7 @@ export default function Navbar() {
     queryFn: () => cartApi.get(),
     staleTime: 30_000,
     retry: false,
-    // Don't throw on error — cart may not exist for guest
+    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
     throwOnError: false,
   });
   const cartCount: number = cartData?.data?.data?.totals?.itemCount

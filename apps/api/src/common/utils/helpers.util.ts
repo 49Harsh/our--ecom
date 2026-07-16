@@ -62,10 +62,13 @@ export function calculateGST(
 
 /**
  * Paginate helper — returns offset/limit from page/limit
+ * Accepts strings too (common from query params) and coerces to number
  */
-export function getPaginationParams(page = 1, limit = 20): { skip: number; take: number } {
-  const safeLimit = Math.min(Math.max(limit, 1), 100);
-  const safePage = Math.max(page, 1);
+export function getPaginationParams(page: number | string = 1, limit: number | string = 20): { skip: number; take: number } {
+  const numPage  = typeof page  === 'string' ? parseInt(page,  10) : page;
+  const numLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+  const safeLimit = Math.min(Math.max(isNaN(numLimit) ? 20 : numLimit, 1), 100);
+  const safePage  = Math.max(isNaN(numPage)  ? 1  : numPage,  1);
   return { skip: (safePage - 1) * safeLimit, take: safeLimit };
 }
 

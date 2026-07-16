@@ -140,8 +140,21 @@ export const usersApi = {
 
 // ─── Search ────────────────────────────────────────────────────────────────
 export const searchApi = {
-  search:      (q: string, params?: any) =>
-    api.get('/search', { params: { q, ...params } }),
+  search: (q: string, params?: any) => {
+    // Ensure numeric params are sent as numbers, not strings
+    const cleaned: Record<string, any> = { q };
+    if (params?.sort)     cleaned.sort = params.sort;
+    if (params?.limit)    cleaned.limit = Number(params.limit);
+    if (params?.page)     cleaned.page = Number(params.page);
+    if (params?.minPrice) cleaned.minPrice = Number(params.minPrice);
+    if (params?.maxPrice) cleaned.maxPrice = Number(params.maxPrice);
+    if (params?.category) cleaned.category = params.category;
+    if (params?.gender)   cleaned.gender = params.gender;
+    if (params?.brand)    cleaned.brand = params.brand;
+    if (params?.size)     cleaned.size = params.size;
+    if (params?.color)    cleaned.color = params.color;
+    return api.get('/search', { params: cleaned });
+  },
   suggestions: (q: string) =>
     api.get('/search/suggestions', { params: { q } }),
 };
@@ -162,8 +175,13 @@ export const paymentsApi = {
 
 // ─── Reviews ───────────────────────────────────────────────────────────────
 export const reviewsApi = {
-  getByProduct: (productId: string, params?: any) =>
-    api.get(`/reviews/product/${productId}`, { params }),
+  getByProduct: (productId: string, params?: { page?: number; limit?: number }) =>
+    api.get(`/reviews/product/${productId}`, {
+      params: {
+        page:  Number(params?.page ?? 1),
+        limit: Number(params?.limit ?? 10),
+      },
+    }),
   create: (productId: string, data: { rating: number; title?: string; body?: string }) =>
     api.post(`/reviews/product/${productId}`, data),
   delete: (reviewId: string) => api.delete(`/reviews/${reviewId}`),

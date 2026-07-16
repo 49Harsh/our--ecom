@@ -11,8 +11,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000,
-            retry: 1,
+            retry: false,           // don't retry on 401 — avoids refresh loops
             refetchOnWindowFocus: false,
+            // Never throw — handle errors at component level
+            throwOnError: false,
+          },
+          mutations: {
+            throwOnError: false,
           },
         },
       }),

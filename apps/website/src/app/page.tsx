@@ -1,16 +1,13 @@
+import type { Metadata } from 'next';
+import HomeClient from './HomeClient';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'R·ECOM — Premium Clothing Store',
+  description: 'Discover premium clothing for men, women, and kids. Shop new arrivals, trending styles, and exclusive collections.',
+};
+
 export default function HomePage() {
-  return (
-    <div className="container-site py-20 text-center">
-      <h1 className="font-serif text-5xl font-bold text-black mb-4">
-        New Collection
-      </h1>
-      <p className="text-gray-500 text-lg mb-8">
-        Discover premium clothing crafted for the modern Indian wardrobe.
-      </p>
-      <div className="flex gap-4 justify-center">
-        <a href="/shop" className="btn btn-primary">Shop Now</a>
-        <a href="/shop?sort=newest" className="btn btn-outline">New Arrivals</a>
-      </div>
-    </div>
-  );
+  return <HomeClient />;
 }

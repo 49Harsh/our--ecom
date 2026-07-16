@@ -8,7 +8,7 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach access token automatically
+// Attach access token if available
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');
@@ -17,88 +17,160 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
+// These endpoints require auth — redirect to login only when explicitly needed
+const AUTH_REQUIRED_PATHS = [
+  '/orders',
+  '/users/me',
+  '/users/addresses',
+  '/wishlist',
+  '/checkout',
+];
+
+const requiresAuth = (url?: string) =>
+  AUTH_REQUIRED_PATHS.some((p) => url?.includes(p));
+
+// Auto-refresh on 401 — only redirect to login if user was previously logged in
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        original.headers.Authorization = `Bearer ${data.accessToken}`;
-        return api(original);
-      } catch {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/auth/login';
+
+      const refreshToken =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('refreshToken')
+          : null;
+
+      // If we have a refresh token, try to refresh silently
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
+            refreshToken,
+          });
+          const tokens = data?.data ?? data;
+          localStorage.setItem('accessToken', tokens.accessToken);
+          localStorage.setItem('refreshToken', tokens.refreshToken);
+          original.headers.Authorization = `Bearer ${tokens.accessToken}`;
+          return api(original);
+        } catch {
+          // Refresh failed — clear tokens silently, do NOT redirect
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+        }
       }
+
+      // No tokens at all — just reject silently (guest user)
+      // Only redirect if it's a page that truly needs auth AND user tried to access it directly
+      // (handled at page/component level, not here)
     }
+
     return Promise.reject(error);
   },
 );
 
-// Auth endpoints
+// ─── Auth ──────────────────────────────────────────────────────────────────
 export const authApi = {
-  register: (data: any)          => api.post('/auth/register', data),
-  login:    (data: any)          => api.post('/auth/login', data),
-  logout:   (refreshToken: string) => api.post('/auth/logout', { refreshToken }),
-  me:       ()                   => api.get('/auth/me'),
+  register:       (data: any)             => api.post('/auth/register', data),
+  login:          (data: any)             => api.post('/auth/login', data),
+  logout:         (refreshToken: string)  => api.post('/auth/logout', { refreshToken }),
+  forgotPassword: (data: any)             => api.post('/auth/forgot-password', data),
+  resetPassword:  (data: any)             => api.post('/auth/reset-password', data),
+  me:             ()                      => api.get('/auth/me'),
 };
 
-// Products
+// ─── Products ──────────────────────────────────────────────────────────────
 export const productsApi = {
-  getAll:    (params?: any)       => api.get('/products', { params }),
-  getBySlug: (slug: string)       => api.get(`/products/${slug}`),
+  getAll:    (params?: any)  => api.get('/products', { params }),
+  getBySlug: (slug: string)  => api.get(`/products/${slug}`),
 };
 
-// Categories
+// ─── Categories ────────────────────────────────────────────────────────────
 export const categoriesApi = {
-  getAll: (params?: any) => api.get('/categories', { params }),
-  getBySlug: (slug: string) => api.get(`/categories/${slug}`),
+  getAll:    (params?: any)  => api.get('/categories', { params }),
+  getBySlug: (slug: string)  => api.get(`/categories/${slug}`),
 };
 
-// Cart
+// ─── Cart (works for guests too — no auth required) ────────────────────────
 export const cartApi = {
-  get:          (guestId?: string) => api.get('/cart', { headers: guestId ? { 'X-Guest-ID': guestId } : {} }),
-  add:          (data: any, guestId?: string) => api.post('/cart/add', data, { headers: guestId ? { 'X-Guest-ID': guestId } : {} }),
-  updateItem:   (itemId: string, data: any)   => api.patch(`/cart/items/${itemId}`, data),
-  removeItem:   (itemId: string)               => api.delete(`/cart/items/${itemId}`),
-  clear:        ()                             => api.delete('/cart/clear'),
-  applyCoupon:  (code: string)                 => api.post('/cart/coupon', { code }),
-  removeCoupon: ()                             => api.delete('/cart/coupon'),
+  get:          (guestId?: string) =>
+    api.get('/cart', {
+      headers: guestId ? { 'X-Guest-ID': guestId } : {},
+    }),
+  add:          (data: any, guestId?: string) =>
+    api.post('/cart/add', data, {
+      headers: guestId ? { 'X-Guest-ID': guestId } : {},
+    }),
+  updateItem:   (itemId: string, data: any) =>
+    api.patch(`/cart/items/${itemId}`, data),
+  removeItem:   (itemId: string) =>
+    api.delete(`/cart/items/${itemId}`),
+  clear:        () => api.delete('/cart/clear'),
+  applyCoupon:  (code: string) => api.post('/cart/coupon', { code }),
+  removeCoupon: () => api.delete('/cart/coupon'),
+  merge:        (guestId: string) => api.post('/cart/merge', { guestId }),
 };
 
-// Wishlist
+// ─── Wishlist ──────────────────────────────────────────────────────────────
 export const wishlistApi = {
-  get:    ()                    => api.get('/wishlist'),
-  add:    (productId: string)   => api.post('/wishlist', { productId }),
-  remove: (productId: string)   => api.delete(`/wishlist/${productId}`),
-  check:  (productId: string)   => api.get(`/wishlist/check/${productId}`),
+  get:    ()                   => api.get('/wishlist'),
+  add:    (productId: string)  => api.post('/wishlist', { productId }),
+  remove: (productId: string)  => api.delete(`/wishlist/${productId}`),
+  check:  (productId: string)  => api.get(`/wishlist/check/${productId}`),
 };
 
-// Orders
+// ─── Orders ────────────────────────────────────────────────────────────────
 export const ordersApi = {
-  create:     (data: any)         => api.post('/orders', data),
-  getMyOrders: (params?: any)     => api.get('/orders', { params }),
-  getById:    (id: string)        => api.get(`/orders/${id}`),
-  cancel:     (id: string)        => api.patch(`/orders/${id}/cancel`),
+  create:      (data: any)     => api.post('/orders', data),
+  getMyOrders: (params?: any)  => api.get('/orders/my', { params }),
+  getById:     (id: string)    => api.get(`/orders/my/${id}`),
+  cancel:      (id: string)    => api.patch(`/orders/my/${id}/cancel`),
 };
 
-// User / Profile
+// ─── Users / Profile ───────────────────────────────────────────────────────
 export const usersApi = {
-  getMe:           ()            => api.get('/users/me'),
-  updateMe:        (data: any)   => api.patch('/users/me', data),
-  getAddresses:    ()            => api.get('/users/addresses'),
-  createAddress:   (data: any)   => api.post('/users/addresses', data),
-  updateAddress:   (id: string, data: any) => api.patch(`/users/addresses/${id}`, data),
-  deleteAddress:   (id: string)  => api.delete(`/users/addresses/${id}`),
+  getMe:         ()                          => api.get('/users/me'),
+  updateMe:      (data: any)                 => api.patch('/users/me', data),
+  getAddresses:  ()                          => api.get('/users/me/addresses'),
+  createAddress: (data: any)                 => api.post('/users/me/addresses', data),
+  updateAddress: (id: string, data: any)     => api.patch(`/users/me/addresses/${id}`, data),
+  deleteAddress: (id: string)                => api.delete(`/users/me/addresses/${id}`),
 };
 
-// Search
+// ─── Search ────────────────────────────────────────────────────────────────
 export const searchApi = {
-  search: (q: string, params?: any) => api.get('/search', { params: { q, ...params } }),
+  search:      (q: string, params?: any) =>
+    api.get('/search', { params: { q, ...params } }),
+  suggestions: (q: string) =>
+    api.get('/search/suggestions', { params: { q } }),
+};
+
+// ─── Payments ──────────────────────────────────────────────────────────────
+export const paymentsApi = {
+  createOrder:  (orderId: string) =>
+    api.post('/payments/create-order', { orderId }),
+  verifyPayment: (data: {
+    orderId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    method?: string;
+  }) => api.post('/payments/verify', data),
+  getByOrder:   (orderId: string) => api.get(`/payments/${orderId}`),
+};
+
+// ─── Reviews ───────────────────────────────────────────────────────────────
+export const reviewsApi = {
+  getByProduct: (productId: string, params?: any) =>
+    api.get(`/reviews/product/${productId}`, { params }),
+  create: (productId: string, data: { rating: number; title?: string; body?: string }) =>
+    api.post(`/reviews/product/${productId}`, data),
+  delete: (reviewId: string) => api.delete(`/reviews/${reviewId}`),
+};
+
+// ─── Returns ───────────────────────────────────────────────────────────────
+export const returnsApi = {
+  getMyReturns: ()                           => api.get('/returns/my'),
+  create:       (orderId: string, data: any) => api.post(`/returns/${orderId}`, data),
 };

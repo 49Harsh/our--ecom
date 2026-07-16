@@ -2,6 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Providers from '@/components/Providers';
 import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+
+// All pages rely on client-side API calls — disable static pre-rendering globally
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: {
@@ -29,10 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>
+      <body className="flex flex-col min-h-screen">
         <Providers>
           <Navbar />
-          <main>{children}</main>
+          <main className="flex-1">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>

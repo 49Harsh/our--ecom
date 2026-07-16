@@ -317,15 +317,19 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Load user from localStorage
+  // Load user from localStorage — only on mount, not on every route change
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (token) {
       usersApi.getMe()
-        .then((res) => setUser(res.data))
-        .catch(() => setUser(null));
+        .then((res) => setUser(res.data?.data ?? res.data))
+        .catch(() => {
+          // Token invalid — clear silently, no redirect
+          setUser(null);
+        });
     }
-  }, [pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only on mount
 
   // Lock body scroll when drawer open
   useEffect(() => {
@@ -346,14 +350,18 @@ export default function Navbar() {
   });
   const categories: Category[] = categoriesData?.data?.data ?? [];
 
-  // Fetch cart count
+  // Fetch cart count — works for both guest and logged-in users
   const { data: cartData } = useQuery({
     queryKey: ['cart', 'count'],
     queryFn: () => cartApi.get(),
     staleTime: 30_000,
     retry: false,
+    // Don't throw on error — cart may not exist for guest
+    throwOnError: false,
   });
-  const cartCount: number = cartData?.data?.totals?.itemCount ?? 0;
+  const cartCount: number = cartData?.data?.data?.totals?.itemCount
+    ?? cartData?.data?.totals?.itemCount
+    ?? 0;
 
   // Logout
   const handleLogout = useCallback(async () => {

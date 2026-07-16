@@ -47,7 +47,7 @@ export class NotificationsService {
     data?: Record<string, unknown>,
   ) {
     return this.prisma.notification.create({
-      data: { userId, type: type as any, title, body, data },
+      data: { userId, type: type as any, title, body, data: data as any },
     });
   }
 

@@ -1,7 +1,7 @@
-import { IsString, IsOptional, IsMobilePhone, IsUrl } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsMobilePhone, IsUrl, IsBoolean, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '../../../common/constants/roles.constant';
+import { AddressType } from '@prisma/client';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'John Doe' })
@@ -21,23 +21,60 @@ export class UpdateProfileDto {
 }
 
 export class UpdateUserRoleDto {
-  @ApiPropertyOptional({ enum: UserRole })
+  @ApiProperty({ enum: UserRole })
   @IsEnum(UserRole)
   role: UserRole;
 }
 
 export class CreateAddressDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
-  @IsString() fullName: string;
-  @IsString() phone: string;
-  @IsString() line1: string;
-  @IsOptional() @IsString() line2?: string;
-  @IsString() city: string;
-  @IsString() state: string;
-  @IsString() pincode: string;
-  @IsOptional() @IsString() country?: string;
-  @IsOptional() @IsString() landmark?: string;
-  @IsOptional() isDefault?: boolean;
+  @ApiPropertyOptional({ enum: AddressType, default: AddressType.HOME })
+  @IsOptional()
+  @IsEnum(AddressType)
+  type?: AddressType;
+
+  @ApiProperty()
+  @IsString()
+  fullName: string;
+
+  @ApiProperty()
+  @IsString()
+  phone: string;
+
+  @ApiProperty()
+  @IsString()
+  line1: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  line2?: string;
+
+  @ApiProperty()
+  @IsString()
+  city: string;
+
+  @ApiProperty()
+  @IsString()
+  state: string;
+
+  @ApiProperty()
+  @IsString()
+  pincode: string;
+
+  @ApiPropertyOptional({ default: 'India' })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landmark?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
 }
 
 export class UpdateAddressDto extends CreateAddressDto {}

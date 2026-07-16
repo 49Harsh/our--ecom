@@ -1,8 +1,7 @@
 import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { IsInt, Min, IsOptional, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, Min, IsOptional, IsArray, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,6 +19,28 @@ class BulkUpdateStockDto {
   updates: { variantId: string; stock: number }[];
 }
 
+class InventoryQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  lowStockOnly?: boolean = false;
+}
+
 @ApiTags('Inventory')
 @ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,15 +51,8 @@ export class InventoryController {
 
   @Get()
   @ApiOperation({ summary: '[Admin] List all inventory with variant info' })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'lowStockOnly', required: false, type: Boolean })
-  findAll(
-    @Query('page') @Type(() => Number) page?: number,
-    @Query('limit') @Type(() => Number) limit?: number,
-    @Query('lowStockOnly') lowStockOnly?: boolean,
-  ) {
-    return this.inventoryService.findAll(page, limit, lowStockOnly);
+  findAll(@Query() query: InventoryQueryDto) {
+    return this.inventoryService.findAll(query.page, query.limit, query.lowStockOnly);
   }
 
   @Get('alerts')

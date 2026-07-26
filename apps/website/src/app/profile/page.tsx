@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -27,12 +27,19 @@ const navItems = [
 export default function ProfilePage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const { data, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: () => usersApi.getMe(),
     retry: false,
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: mounted && !!token,
   });
 
   const user = data?.data?.data ?? data?.data;

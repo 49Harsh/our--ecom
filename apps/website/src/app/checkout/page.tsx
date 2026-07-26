@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -35,6 +35,13 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
   const [error, setError] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+  
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const { data: cartData, isLoading: cartLoading } = useQuery({
     queryKey: ['cart'],
@@ -46,13 +53,14 @@ export default function CheckoutPage() {
     queryKey: ['addresses'],
     queryFn: () => usersApi.getAddresses(),
     retry: false,
+    enabled: mounted && !!token,
   });
 
   const { data: meData } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: () => usersApi.getMe(),
     retry: false,
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: mounted && !!token,
   });
 
   const cart      = cartData?.data?.data ?? cartData?.data;

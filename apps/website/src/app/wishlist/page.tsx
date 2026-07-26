@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Heart } from 'lucide-react';
@@ -9,15 +10,33 @@ import { ProductCardSkeleton } from '@/components/ui/Skeleton';
 
 export default function WishlistPage() {
   const qc = useQueryClient();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const { data, isLoading } = useQuery({
     queryKey: ['wishlist'],
     queryFn: () => wishlistApi.get(),
     retry: false,
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: mounted && !!token,
   });
 
   const items: any[] = data?.data?.data ?? data?.data ?? [];
+
+  if (!mounted) {
+    return (
+      <div className="container-site py-8 lg:py-12">
+        <h1 className="font-serif text-2xl font-bold text-black mb-8">Wishlist</h1>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <ProductCardSkeleton key={i} />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-site py-8 lg:py-12">
@@ -25,11 +44,11 @@ export default function WishlistPage() {
         Wishlist <span className="text-gray-400 font-sans text-base font-normal">({items.length})</span>
       </h1>
 
-      {isLoading ? (
+      {isLoading && !!token ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)}
+          {[...Array(4)].map((_, i) => <ProductCardSkeleton key={i} />)}
         </div>
-      ) : items.length === 0 ? (
+      ) : !token || items.length === 0 ? (
         <div className="text-center py-20">
           <Heart size={56} className="text-gray-200 mx-auto mb-5" />
           <h2 className="font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>

@@ -118,12 +118,29 @@ export default function AddressesPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      // safe initialization check
+    }
+  });
+
+  // Set mount status on load
+  const [isMounted, setIsMounted] = useState(false);
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      setIsMounted(true);
+    }
+  });
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const { data, isLoading } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => usersApi.getAddresses(),
     retry: false,
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: isMounted && !!token,
   });
 
   const addresses: any[] = data?.data?.data ?? data?.data ?? [];
@@ -142,6 +159,17 @@ export default function AddressesPage() {
     mutationFn: (id: string) => usersApi.deleteAddress(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['addresses'] }),
   });
+
+  if (!isMounted) {
+    return (
+      <div className="container-site py-8 lg:py-12 max-w-3xl">
+        <h1 className="font-serif text-2xl font-bold text-black mb-8">My Addresses</h1>
+        <div className="space-y-4">
+          {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-site py-8 lg:py-12 max-w-3xl">

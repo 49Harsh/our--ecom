@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, ChevronDown, ChevronUp, ExternalLink, Loader2 } from 'lucide-react';
@@ -93,14 +93,33 @@ function OrderCard({ order }: { order: any }) {
 }
 
 export default function OrdersPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
   const { data, isLoading } = useQuery({
     queryKey: ['orders', 'my'],
     queryFn: () => ordersApi.getMyOrders({ limit: 20 }),
     retry: false,
-    enabled: typeof window !== 'undefined' && !!localStorage.getItem('accessToken'),
+    enabled: mounted && !!token,
   });
 
   const orders = data?.data?.data ?? data?.data ?? [];
+
+  if (!mounted) {
+    return (
+      <div className="container-site py-8 lg:py-12 max-w-3xl">
+        <h1 className="font-serif text-2xl font-bold text-black mb-8">My Orders</h1>
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-site py-8 lg:py-12 max-w-3xl">

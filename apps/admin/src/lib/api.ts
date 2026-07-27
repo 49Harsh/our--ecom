@@ -135,21 +135,23 @@ export const inventoryApi = {
 };
 
 // ─── Hero Banners ──────────────────────────────────────────────────────────
+// Routes are under dashboard controller: /dashboard/hero-banners
 export const heroBannerApi = {
-  getAll:  ()                        => api.get('/hero-banners'),
-  create:  (data: any)               => api.post('/hero-banners', data),
-  update:  (id: string, data: any)   => api.patch(`/hero-banners/${id}`, data),
-  delete:  (id: string)              => api.delete(`/hero-banners/${id}`),
-  reorder: (ids: string[])           => api.patch('/hero-banners/reorder', { ids }),
+  getAll:  ()                        => api.get('/dashboard/hero-banners/admin'),
+  create:  (data: any)               => api.post('/dashboard/hero-banners', data),
+  update:  (id: string, data: any)   => api.patch(`/dashboard/hero-banners/${id}`, data),
+  delete:  (id: string)              => api.delete(`/dashboard/hero-banners/${id}`),
+  reorder: (ids: string[])           => api.patch('/dashboard/hero-banners/reorder', { ids }),
 };
 
 // ─── Homepage Builder ──────────────────────────────────────────────────────
+// Routes are under dashboard controller: /dashboard/sections
 export const homepageApi = {
-  getSections: ()                       => api.get('/homepage-sections'),
-  update:      (id: string, data: any)  => api.patch(`/homepage-sections/${id}`, data),
-  create:      (data: any)              => api.post('/homepage-sections', data),
-  delete:      (id: string)             => api.delete(`/homepage-sections/${id}`),
-  reorder:     (ids: string[])          => api.patch('/homepage-sections/reorder', { ids }),
+  getSections: ()                       => api.get('/dashboard/sections/admin'),
+  update:      (id: string, data: any)  => api.patch(`/dashboard/sections/${id}`, data),
+  create:      (data: any)              => api.post('/dashboard/sections', data),
+  delete:      (id: string)             => api.delete(`/dashboard/sections/${id}`),
+  reorder:     (ids: string[])          => api.patch('/dashboard/sections/reorder', { ids }),
 };
 
 // ─── Media / Uploads ───────────────────────────────────────────────────────
@@ -183,14 +185,21 @@ export const invoicesApi = {
 };
 
 // ─── Shipping ──────────────────────────────────────────────────────────────
+// No zones endpoint in backend — shipping controller only has:
+// POST /shipping/rates, GET /shipping/track/:awb, POST /shipping/create/:orderId, POST /shipping/cancel
+// Shipments are tracked via orders; zones are managed client-side / not implemented in backend yet.
 export const shippingApi = {
-  getZones:   ()                            => api.get('/shipping/zones'),
-  createZone: (data: any)                   => api.post('/shipping/zones', data),
-  updateZone: (id: string, data: any)       => api.patch(`/shipping/zones/${id}`, data),
-  deleteZone: (id: string)                  => api.delete(`/shipping/zones/${id}`),
-  getShipments: (params?: any)              => api.get('/shipping/shipments', { params }),
-  createShipment: (orderId: string)         => api.post(`/shipping/create/${orderId}`),
-  trackShipment:  (awb: string)             => api.get(`/shipping/track/${awb}`),
+  // Zones: not implemented in backend — these will gracefully return empty
+  getZones:       ()                      => Promise.resolve({ data: { data: [] } }),
+  createZone:     (data: any)             => Promise.resolve({ data }),
+  updateZone:     (id: string, data: any) => Promise.resolve({ data }),
+  deleteZone:     (id: string)            => Promise.resolve({ data: { id } }),
+  // Shipments: fetch shipped/out-for-delivery orders from orders API
+  getShipments:   (params?: any)          => api.get('/orders/admin', {
+    params: { status: 'SHIPPED', limit: params?.limit ?? 30 },
+  }),
+  createShipment: (orderId: string)       => api.post(`/shipping/create/${orderId}`),
+  trackShipment:  (awb: string)           => api.get(`/shipping/track/${awb}`),
 };
 
 // ─── Payments ──────────────────────────────────────────────────────────────

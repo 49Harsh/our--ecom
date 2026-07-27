@@ -117,7 +117,24 @@ export default function CouponsPage() {
               <h2 className="font-bold text-lg">{editing ? 'Edit Coupon' : 'Create Coupon'}</h2>
               <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-sm"><X size={16} /></button>
             </div>
-            <form onSubmit={handleSubmit((d) => saveMutation.mutate(d))} className="space-y-4">
+            <form onSubmit={handleSubmit((d) => {
+                const payload: any = {};
+                // Required fields
+                payload.code        = d.code;
+                payload.type        = d.type;
+                payload.value       = d.value;
+                payload.isActive    = d.isActive ?? true;
+                // Optional — only include if valid (not empty, not NaN)
+                if (d.description)                        payload.description       = d.description;
+                if (d.minOrderAmount && !isNaN(d.minOrderAmount)) payload.minOrderAmount = d.minOrderAmount;
+                if (d.maxDiscount    && !isNaN(d.maxDiscount))    payload.maxDiscount    = d.maxDiscount;
+                if (d.usageLimit     && !isNaN(d.usageLimit))     payload.usageLimit     = d.usageLimit;
+                if (d.usageLimitPerUser && !isNaN(d.usageLimitPerUser)) payload.usageLimitPerUser = d.usageLimitPerUser;
+                // Dates — convert string → ISO Date, skip if empty
+                if (d.startDate) payload.startDate = new Date(d.startDate).toISOString();
+                if (d.endDate)   payload.endDate   = new Date(d.endDate).toISOString();
+                saveMutation.mutate(payload);
+              })} className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Code *</label>

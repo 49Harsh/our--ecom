@@ -37,7 +37,13 @@ export default function CategoriesPage() {
   const openCreate = () => { setEditing(null); reset({ isActive: true, sortOrder: 0 }); setShowForm(true); };
   const openEdit = (c: any) => {
     setEditing(c);
-    reset({ name: c.name, description: c.description ?? '', parentId: c.parentId ?? '', isActive: c.isActive, sortOrder: c.sortOrder });
+    reset({
+      name: c.name,
+      description: c.description ?? '',
+      parentId: c.parentId ?? undefined,
+      isActive: c.isActive,
+      sortOrder: c.sortOrder ?? 0,
+    });
     setShowForm(true);
   };
 
@@ -118,7 +124,13 @@ export default function CategoriesPage() {
               <h2 className="font-bold text-lg">{editing ? 'Edit Category' : 'Add Category'}</h2>
               <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-sm"><X size={16} /></button>
             </div>
-            <form onSubmit={handleSubmit((d) => saveMutation.mutate(d))} className="space-y-4">
+            <form onSubmit={handleSubmit((d) => {
+                // Strip empty strings / undefined so backend validators don't reject them
+                const payload: any = { ...d };
+                if (!payload.parentId) delete payload.parentId;
+                if (!payload.description) delete payload.description;
+                saveMutation.mutate(payload);
+              })} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
                 <input {...register('name')} className="input" />

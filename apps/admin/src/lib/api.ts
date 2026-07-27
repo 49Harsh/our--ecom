@@ -124,10 +124,14 @@ export const returnsApi = {
 
 // ─── Inventory ─────────────────────────────────────────────────────────────
 export const inventoryApi = {
-  getAll:        (params?: any)                     => api.get('/inventory', { params }),
-  getLowStock:   ()                                  => api.get('/inventory/low-stock'),
-  update:        (variantId: string, stock: number) =>
-    api.patch(`/inventory/${variantId}`, { stock }),
+  // search is NOT in InventoryQueryDto — filtering is done client-side
+  getAll:      (params?: any) => {
+    const { search: _search, ...rest } = params ?? {};
+    return api.get('/inventory', { params: rest });
+  },
+  getLowStock: () => api.get('/inventory/alerts'),                          // correct endpoint
+  update:      (variantId: string, stock: number) =>
+    api.patch(`/inventory/variant/${variantId}`, { stock }),                // correct path
 };
 
 // ─── Hero Banners ──────────────────────────────────────────────────────────

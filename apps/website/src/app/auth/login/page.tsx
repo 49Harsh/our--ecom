@@ -32,6 +32,19 @@ export default function LoginPage() {
       const { accessToken, refreshToken } = res.data?.data ?? res.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+
+      // Merge guest cart into user cart after login
+      const guestId = localStorage.getItem('guestCartId');
+      if (guestId) {
+        try {
+          const { cartApi } = await import('@/lib/api');
+          await cartApi.merge(guestId);
+          localStorage.removeItem('guestCartId');
+        } catch {
+          // Cart merge failure is non-critical
+        }
+      }
+
       router.push('/');
       router.refresh();
     } catch (err: any) {

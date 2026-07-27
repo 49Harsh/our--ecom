@@ -13,6 +13,8 @@ export class CreateOrderDto {
   @ApiPropertyOptional() @IsOptional() @IsString() shippingZoneId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() couponCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional({ description: 'Payment method: RAZORPAY | COD' })
+  @IsOptional() @IsString() paymentMethod?: string;
 }
 
 export class UpdateOrderStatusDto {

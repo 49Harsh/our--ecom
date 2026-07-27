@@ -164,11 +164,19 @@ export const uploadsApi = {
 
 // ─── Analytics ─────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  getOverview:    (params?: any) => api.get('/analytics/overview', { params }),
-  getRevenue:     (params?: any) => api.get('/analytics/revenue', { params }),
-  getOrders:      (params?: any) => api.get('/analytics/orders', { params }),
-  getTopProducts: (params?: any) => api.get('/analytics/top-products', { params }),
-  getCustomers:   (params?: any) => api.get('/analytics/customers', { params }),
+  getOverview:    ()             => api.get('/analytics/overview'),
+  getRevenue:     (params?: any) => api.get('/analytics/revenue', {
+    params: { period: params?.period === '7d' ? 'week' : params?.period === '1y' ? 'year' : 'month' },
+  }),
+  getOrders:      ()             => api.get('/analytics/orders/by-status'),       // groups by status
+  getTopProducts: (params?: any) => api.get('/analytics/products/best-selling', {
+    params: { limit: params?.limit ?? 10 },
+  }),
+  getCustomers:   (params?: any) => api.get('/analytics/customers/top', {
+    params: { limit: params?.limit ?? 10 },
+  }),
+  getConversion:  ()             => api.get('/analytics/conversion'),
+  getInventory:   ()             => api.get('/analytics/inventory'),
 };
 
 // ─── Invoices ──────────────────────────────────────────────────────────────

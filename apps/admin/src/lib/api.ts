@@ -56,10 +56,10 @@ export const authApi = {
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────
 export const dashboardApi = {
-  getStats:      () => api.get('/dashboard/stats'),
-  getRevenue:    (period?: string) => api.get('/dashboard/revenue', { params: { period } }),
-  getTopProducts: () => api.get('/dashboard/top-products'),
-  getRecentOrders: () => api.get('/dashboard/recent-orders'),
+  getStats:        () => api.get('/analytics/overview'),
+  getRevenue:      (period?: string) => api.get('/analytics/revenue', { params: { period: period === '30d' ? 'month' : (period ?? 'month') } }),
+  getTopProducts:  () => api.get('/analytics/products/best-selling', { params: { limit: 5 } }),
+  getRecentOrders: () => api.get('/orders/admin', { params: { limit: 8 } }),
 };
 
 // ─── Products ──────────────────────────────────────────────────────────────

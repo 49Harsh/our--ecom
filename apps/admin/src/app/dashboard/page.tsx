@@ -35,10 +35,28 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.getTopProducts(),
   });
 
-  const stats = statsData?.data?.data ?? statsData?.data ?? {};
-  const revenue = revenueData?.data?.data ?? revenueData?.data ?? [];
-  const recentOrders = recentData?.data?.data ?? recentData?.data ?? [];
-  const topProducts = topData?.data?.data ?? topData?.data ?? [];
+  const rawStats   = statsData?.data?.data ?? statsData?.data ?? {};
+  const rawRevenue = revenueData?.data?.data ?? revenueData?.data ?? [];
+  const rawOrders  = recentData?.data?.data ?? recentData?.data ?? [];
+  const rawTop     = topData?.data?.data ?? topData?.data ?? [];
+
+  // analytics/overview returns nested shape — flatten for template use
+  const stats = {
+    totalRevenue:    rawStats.revenue?.total      ?? 0,
+    revenueChange:   rawStats.revenue?.growth      ?? null,
+    totalOrders:     rawStats.orders?.total        ?? 0,
+    ordersChange:    rawStats.orders?.growth        ?? null,
+    totalCustomers:  rawStats.customers?.total      ?? 0,
+    customersChange: rawStats.customers?.thisMonth  ?? null,
+    totalProducts:   rawStats.products?.total       ?? 0,
+    pendingOrders:   0,
+    confirmedOrders: 0,
+    deliveredOrders: 0,
+    cancelledOrders: 0,
+  };
+  const revenue      = Array.isArray(rawRevenue) ? rawRevenue : [];
+  const recentOrders = Array.isArray(rawOrders)  ? rawOrders  : [];
+  const topProducts  = Array.isArray(rawTop)      ? rawTop     : [];
 
   return (
     <AdminLayout title="Dashboard">

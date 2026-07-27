@@ -178,7 +178,17 @@ export class CartService {
           include: {
             variant: {
               include: {
-                product: { select: { id: true, title: true, slug: true, thumbnail: true, status: true } },
+                product: {
+                  select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    thumbnail: true,
+                    status: true,
+                    price: true,
+                    discountPrice: true,
+                  },
+                },
                 size: true,
                 color: true,
                 inventory: { select: { stock: true } },
@@ -201,7 +211,13 @@ export class CartService {
     coupon: { type: string; value: any; maxDiscount: any } | null,
   ) {
     const subtotal = items.reduce((sum, item) => {
-      const price = Number(item.variant.discountPrice ?? item.variant.price ?? 0);
+      const price = Number(
+        item.variant.discountPrice ??
+        item.variant.price ??
+        item.variant.product?.discountPrice ??
+        item.variant.product?.price ??
+        0
+      );
       return sum + price * item.quantity;
     }, 0);
 

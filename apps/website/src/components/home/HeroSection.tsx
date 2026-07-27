@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { heroBannersApi } from '@/lib/api';
 
 interface HeroBanner {
   id: string;
@@ -51,7 +51,10 @@ export default function HeroSection() {
 
   const { data } = useQuery({
     queryKey: ['hero-banners'],
-    queryFn: () => api.get('/hero-banners').then((r) => r.data?.data),
+    queryFn: () => heroBannersApi.getActive().then((r) => {
+      const raw = r.data?.data ?? r.data;
+      return Array.isArray(raw) ? raw : [];
+    }),
     staleTime: 5 * 60_000,
   });
 

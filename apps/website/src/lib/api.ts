@@ -87,9 +87,20 @@ export const productsApi = {
 };
 
 // ─── Categories ────────────────────────────────────────────────────────────
+// CategoryQueryDto only supports: page, limit, search, parentId
+// isActive is NOT a supported query param — filtering is done by backend automatically
 export const categoriesApi = {
-  getAll:    (params?: any)  => api.get('/categories', { params }),
-  getBySlug: (slug: string)  => api.get(`/categories/${slug}`),
+  getAll: (params?: any) => {
+    const { isActive: _drop, ...rest } = params ?? {};
+    return api.get('/categories', { params: rest });
+  },
+  getBySlug: (slug: string) => api.get(`/categories/${slug}`),
+};
+
+// ─── Hero Banners (public) ─────────────────────────────────────────────────
+// Route is under dashboard controller: GET /dashboard/hero-banners (public)
+export const heroBannersApi = {
+  getActive: () => api.get('/dashboard/hero-banners'),
 };
 
 // ─── Cart (works for guests too — no auth required) ────────────────────────

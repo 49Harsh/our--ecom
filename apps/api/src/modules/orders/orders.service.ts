@@ -27,7 +27,16 @@ export class OrdersService {
           include: {
             variant: {
               include: {
-                product: { select: { id: true, title: true, thumbnail: true, status: true } },
+                product: {
+                  select: {
+                    id: true,
+                    title: true,
+                    thumbnail: true,
+                    status: true,
+                    price: true,
+                    discountPrice: true,
+                  },
+                },
                 size: true,
                 color: true,
                 inventory: true,
@@ -60,7 +69,13 @@ export class OrdersService {
 
     // 4. Calculate totals
     const subtotal = cart.items.reduce((sum, item) => {
-      const price = Number(item.variant.discountPrice ?? item.variant.price ?? 0);
+      const price = Number(
+        item.variant.discountPrice ??
+        item.variant.price ??
+        item.variant.product?.discountPrice ??
+        item.variant.product?.price ??
+        0
+      );
       return sum + price * item.quantity;
     }, 0);
 
@@ -100,17 +115,26 @@ export class OrdersService {
           total,
           status: 'PENDING',
           items: {
-            create: cart.items.map((item) => ({
-              productId: item.variant.product.id,
-              variantId: item.variantId,
-              title: item.variant.product.title,
-              sku: item.variant.sku,
-              image: item.variant.product.thumbnail ?? item.variant.images?.[0] ?? undefined,
-              price: Number(item.variant.discountPrice ?? item.variant.price ?? 0),
-              quantity: item.quantity,
-              total: roundMoney(Number(item.variant.discountPrice ?? item.variant.price ?? 0) * item.quantity),
-              gstRate: 5,
-            })),
+            create: cart.items.map((item) => {
+              const itemPrice = Number(
+                item.variant.discountPrice ??
+                item.variant.price ??
+                item.variant.product?.discountPrice ??
+                item.variant.product?.price ??
+                0
+              );
+              return {
+                productId: item.variant.product.id,
+                variantId: item.variantId,
+                title: item.variant.product.title,
+                sku: item.variant.sku,
+                image: item.variant.product.thumbnail ?? item.variant.images?.[0] ?? undefined,
+                price: itemPrice,
+                quantity: item.quantity,
+                total: roundMoney(itemPrice * item.quantity),
+                gstRate: 5,
+              };
+            }),
           },
         },
         include: { items: true },

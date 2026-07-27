@@ -170,9 +170,15 @@ export const analyticsApi = {
 };
 
 // ─── Invoices ──────────────────────────────────────────────────────────────
+// No dedicated /invoices route in backend — invoices are part of orders.
+// We fetch orders from /orders/admin and display invoice info from each order.
 export const invoicesApi = {
-  getAll:   (params?: any) => api.get('/invoices', { params }),
-  getById:  (id: string)   => api.get(`/invoices/${id}`),
+  getAll:   (params?: any) => {
+    const { search, page, limit } = params ?? {};
+    const cleanParams: any = { page: page ?? 1, limit: limit ?? 20 };
+    if (search) cleanParams.search = search;   // maps to orderNumber search
+    return api.get('/orders/admin', { params: cleanParams });
+  },
   download: (id: string)   => api.get(`/invoices/${id}/download`, { responseType: 'blob' }),
 };
 

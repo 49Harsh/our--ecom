@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, UseGuards, Headers, HttpCode, HttpStatus, Req,
+  Body, Param, UseGuards, Headers, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { CartService } from './cart.service';
@@ -8,6 +8,7 @@ import { AddToCartDto, UpdateCartItemDto, ApplyCouponDto, MergeCartDto } from '.
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Cart')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,6 +22,7 @@ export class CartController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Get current cart (works for guest and authenticated users)' })
   getCart(
     @CurrentUser('id') userId: string,
@@ -31,6 +33,7 @@ export class CartController {
   }
 
   @Post('add')
+  @Public()
   @ApiOperation({ summary: 'Add item to cart' })
   addItem(
     @Body() dto: AddToCartDto,
@@ -42,6 +45,7 @@ export class CartController {
   }
 
   @Patch('items/:itemId')
+  @Public()
   @ApiOperation({ summary: 'Update cart item quantity' })
   updateItem(
     @Param('itemId') itemId: string,
@@ -54,6 +58,7 @@ export class CartController {
   }
 
   @Delete('items/:itemId')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove item from cart' })
   removeItem(
@@ -66,6 +71,7 @@ export class CartController {
   }
 
   @Delete('clear')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear all items from cart' })
   clearCart(
@@ -77,7 +83,7 @@ export class CartController {
   }
 
   @Post('coupon')
-  @ApiBearerAuth('JWT')
+  @Public()
   @ApiOperation({ summary: 'Apply a coupon to cart' })
   applyCoupon(
     @Body() dto: ApplyCouponDto,
@@ -89,6 +95,7 @@ export class CartController {
   }
 
   @Delete('coupon')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove applied coupon from cart' })
   removeCoupon(

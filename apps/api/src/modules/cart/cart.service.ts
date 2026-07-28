@@ -11,6 +11,9 @@ export class CartService {
 
   // ─── Get Cart ─────────────────────────────────────────────────────────────
   async getCart(userId?: string, guestId?: string) {
+    if (!userId && !guestId) {
+      return { items: [], totals: this.calcTotals([], null) };
+    }
     const cart = await this.findOrCreateCart(userId, guestId);
     return this.enrichCart(cart.id);
   }
@@ -27,7 +30,9 @@ export class CartService {
     if (!variant) throw new NotFoundException('Product variant not found or inactive');
     if (variant.product.status !== 'ACTIVE') throw new BadRequestException('Product is not available');
 
-    const availableStock = (variant.inventory?.stock ?? 0) - (variant.inventory?.reserved ?? 0);
+    const availableStock = variant.inventory
+      ? (variant.inventory.stock ?? 0) - (variant.inventory.reserved ?? 0)
+      : 9999;
     if (availableStock < dto.quantity) {
       throw new BadRequestException(`Only ${availableStock} items available in stock`);
     }
@@ -38,7 +43,9 @@ export class CartService {
 
     if (existingItem) {
       const newQty = existingItem.quantity + dto.quantity;
-      if (newQty > availableStock) throw new BadRequestException(`Only ${availableStock} items available`);
+      if (variant.inventory && newQty > availableStock) {
+        throw new BadRequestException(`Only ${availableStock} items available in stock`);
+      }
       await this.prisma.cartItem.update({
         where: { id: existingItem.id },
         data: { quantity: newQty },
@@ -57,11 +64,18 @@ export class CartService {
     const cart = await this.findCart(userId, guestId);
     if (!cart) throw new NotFoundException('Cart not found');
 
-    const item = await this.prisma.cartItem.findFirst({ where: { id: itemId, cartId: cart.id }, include: { variant: { include: { inventory: true } } } });
+    const item = await this.prisma.cartItem.findFirst({
+      where: { id: itemId, cartId: cart.id },
+      include: { variant: { include: { inventory: true } } },
+    });
     if (!item) throw new NotFoundException('Cart item not found');
 
-    const available = (item.variant.inventory?.stock ?? 0) - (item.variant.inventory?.reserved ?? 0);
-    if (dto.quantity > available) throw new BadRequestException(`Only ${available} available`);
+    const available = item.variant?.inventory
+      ? (item.variant.inventory.stock ?? 0) - (item.variant.inventory.reserved ?? 0)
+      : 9999;
+    if (item.variant?.inventory && dto.quantity > available) {
+      throw new BadRequestException(`Only ${available} available in stock`);
+    }
 
     await this.prisma.cartItem.update({ where: { id: itemId }, data: { quantity: dto.quantity } });
     return this.enrichCart(cart.id);

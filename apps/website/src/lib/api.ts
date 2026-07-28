@@ -8,11 +8,20 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach access token if available
+// Attach access token or guest ID if available
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      let guestId = localStorage.getItem('guestCartId');
+      if (!guestId) {
+        guestId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+        localStorage.setItem('guestCartId', guestId);
+      }
+      config.headers['X-Guest-ID'] = guestId;
+    }
   }
   return config;
 });

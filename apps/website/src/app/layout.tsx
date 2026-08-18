@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: '%s | R·ECOM',
   },
   description: 'Discover premium clothing collections for men, women, and kids. Shop new arrivals, trending styles, and exclusive deals.',
-  keywords: ['clothing', 'fashion', 'online shopping', 'india', 'r-ecom'],
+  keywords: ['clothing', 'fashion', 'online shopping', 'india', 'Roshe'],
   openGraph: {
     type: 'website',
     locale: 'en_IN',

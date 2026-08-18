@@ -5,9 +5,12 @@ import {
   Get,
   UseGuards,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -29,7 +32,10 @@ import {
 @UseGuards(JwtAuthGuard)
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @Public()
@@ -58,8 +64,22 @@ export class AuthController {
   @Public()
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback' })
-  googleCallback(@Req() req: { user: Parameters<AuthService['googleLogin']>[0] }) {
-    return this.authService.googleLogin(req.user);
+  async googleCallback(
+    @Req() req: { user: Parameters<AuthService['googleLogin']>[0] },
+    @Res() res: Response,
+  ) {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    try {
+      const result = await this.authService.googleLogin(req.user);
+      const query = new URLSearchParams({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
+      // Redirect to the website instead of returning raw JSON
+      return res.redirect(`${frontendUrl}/auth/google/callback?${query.toString()}`);
+    } catch {
+      return res.redirect(`${frontendUrl}/auth/login?error=google_login_failed`);
+    }
   }
 
   @Post('otp/send')

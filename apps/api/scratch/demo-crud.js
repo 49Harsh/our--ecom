@@ -106,7 +106,7 @@ async function runDemo() {
       discountPrice: 999.0,
       categoryId: categoryId,
       sku: prodSku,
-      brand: 'R-ECOM Premium',
+      brand: 'Roshe Premium',
       status: 'ACTIVE',
       tags: ['leather', 'accessory', 'strap'],
     };

@@ -63,7 +63,7 @@ async function bootstrap() {
   // ─── Swagger ──────────────────────────────────────────────────────────────
   if (configService.get('NODE_ENV') !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('R-Ecom API')
+      .setTitle('Roshe API')
       .setDescription('Production-ready Clothing E-Commerce API — NestJS + Prisma + PostgreSQL')
       .setVersion('1.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')

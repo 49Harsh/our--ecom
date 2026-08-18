@@ -8,6 +8,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import { GoogleIcon } from '@/components/ui/GoogleIcon';
+
+const GOOGLE_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'https://roshe-api.onrender.com/api/v1'}/auth/google`;
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -123,6 +126,21 @@ export default function RegisterPage() {
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Create Account'}
             </button>
           </form>
+
+          <div className="relative mt-6 mb-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs text-gray-500 bg-white px-2">or continue with</div>
+          </div>
+
+          <a
+            href={GOOGLE_AUTH_URL}
+            className="btn btn-outline w-full gap-2"
+          >
+            <GoogleIcon className="w-4 h-4" />
+            Sign up with Google
+          </a>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">

@@ -164,7 +164,7 @@ export const uploadsApi = {
 
 // ─── Analytics ─────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  getOverview:    ()             => api.get('/analytics/overview'),
+  getOverview:    (params?: any) => api.get('/analytics/overview', { params }),
   getRevenue:     (params?: any) => api.get('/analytics/revenue', {
     params: { period: params?.period === '7d' ? 'week' : params?.period === '1y' ? 'year' : 'month' },
   }),
@@ -198,10 +198,10 @@ export const invoicesApi = {
 // Shipments are tracked via orders; zones are managed client-side / not implemented in backend yet.
 export const shippingApi = {
   // Zones: not implemented in backend — these will gracefully return empty
-  getZones:       ()                      => Promise.resolve({ data: { data: [] } }),
-  createZone:     (data: any)             => Promise.resolve({ data }),
-  updateZone:     (id: string, data: any) => Promise.resolve({ data }),
-  deleteZone:     (id: string)            => Promise.resolve({ data: { id } }),
+  getZones:       (): Promise<any>        => Promise.resolve({ data: { data: [] } }),
+  createZone:     (data: any): Promise<any> => Promise.resolve({ data }),
+  updateZone:     (id: string, data: any): Promise<any> => Promise.resolve({ data }),
+  deleteZone:     (id: string): Promise<any> => Promise.resolve({ data: { id } }),
   // Shipments: fetch shipped/out-for-delivery orders from orders API
   getShipments:   (params?: any)          => api.get('/orders/admin', {
     params: { status: 'SHIPPED', limit: params?.limit ?? 30 },

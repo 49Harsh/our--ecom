@@ -7,11 +7,14 @@ interface Props {
   sub?: string;
   icon?: LucideIcon;
   iconColor?: string;
-  change?: number;       // percent change e.g. 12.5 or -3.2
+  change?: number | string | null;       // percent change e.g. 12.5 or -3.2 or "12.5%"
   loading?: boolean;
 }
 
 export default function StatCard({ title, value, sub, icon: Icon, iconColor = 'bg-indigo-100 text-indigo-600', change, loading }: Props) {
+  const numericChange = typeof change === 'number' ? change : (typeof change === 'string' ? parseFloat(change) : null);
+  const isPositive = numericChange !== null ? numericChange >= 0 : true;
+
   return (
     <div className="card p-5">
       {loading ? (
@@ -32,10 +35,10 @@ export default function StatCard({ title, value, sub, icon: Icon, iconColor = 'b
           </div>
           <p className="text-2xl font-bold text-slate-900">{value}</p>
           <div className="flex items-center gap-2 mt-1">
-            {change !== undefined && (
-              <span className={cn('flex items-center gap-0.5 text-xs font-semibold', change >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                {change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {Math.abs(change)}%
+            {change !== undefined && change !== null && (
+              <span className={cn('flex items-center gap-0.5 text-xs font-semibold', isPositive ? 'text-emerald-600' : 'text-red-500')}>
+                {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {numericChange !== null ? `${Math.abs(numericChange)}%` : String(change)}
               </span>
             )}
             {sub && <p className="text-xs text-slate-400">{sub}</p>}
@@ -45,3 +48,4 @@ export default function StatCard({ title, value, sub, icon: Icon, iconColor = 'b
     </div>
   );
 }
+

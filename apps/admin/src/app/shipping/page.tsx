@@ -37,8 +37,8 @@ export default function ShippingPage() {
     enabled: tab === 'shipments',
   });
 
-  const zones = zonesData?.data?.data ?? zonesData?.data ?? [];
-  const shipments = shipmentsData?.data?.data ?? [];
+  const zones: any[] = Array.isArray(zonesData?.data?.data) ? zonesData.data.data : (Array.isArray(zonesData?.data) ? zonesData.data : []);
+  const shipments: any[] = Array.isArray(shipmentsData?.data?.data) ? shipmentsData.data.data : [];
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ZoneForm>({
     resolver: zodResolver(zoneSchema),

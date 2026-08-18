@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
           value={formatPrice(ov.revenue?.total ?? 0)}
           icon={DollarSign}
           iconColor="bg-indigo-100 text-indigo-600"
-          change={ov.revenue?.growth ? `${ov.revenue.growth}%` : undefined}
+          change={ov.revenue?.growth ?? undefined}
           loading={overviewLoading}
         />
         <StatCard
@@ -74,7 +74,7 @@ export default function AnalyticsPage() {
           value={formatNumber(ov.orders?.total ?? 0)}
           icon={ShoppingBag}
           iconColor="bg-blue-100 text-blue-600"
-          change={ov.orders?.growth ? `${ov.orders.growth}%` : undefined}
+          change={ov.orders?.growth ?? undefined}
           loading={overviewLoading}
         />
         <StatCard

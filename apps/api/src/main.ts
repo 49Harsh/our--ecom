@@ -35,7 +35,7 @@ async function bootstrap() {
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
   app.enableCors({
-    origin: [frontendUrl, adminUrl],
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token', 'X-Guest-ID'],
@@ -101,8 +101,8 @@ async function bootstrap() {
   // ─── Health & Shutdown ────────────────────────────────────────────────────
   app.enableShutdownHooks();
 
-  await app.listen(port);
-  console.log(`🚀 API running at http://localhost:${port}${prefix}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 API running on port ${port} with prefix ${prefix}`);
   console.log(`📚 Swagger docs at http://localhost:${port}${prefix}/docs`);
 }
 

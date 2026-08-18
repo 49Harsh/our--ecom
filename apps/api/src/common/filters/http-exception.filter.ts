@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { Prisma, PrismaClientKnownRequestError, PrismaClientValidationError } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -28,7 +28,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object') {
+      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         const resp = exceptionResponse as Record<string, unknown>;
         message = (resp.message as string) || message;
         errors = resp.errors || null;
@@ -36,19 +36,26 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // ─── Prisma Errors ────────────────────────────────────────────────────────
-    else if (exception instanceof PrismaClientKnownRequestError) {
-      if (exception.code === 'P2002') {
+    else if (
+      exception instanceof Prisma.PrismaClientKnownRequestError ||
+      (typeof exception === 'object' && exception !== null && (exception as any).name === 'PrismaClientKnownRequestError')
+    ) {
+      const prismaErr = exception as Prisma.PrismaClientKnownRequestError;
+      if (prismaErr.code === 'P2002') {
         status = HttpStatus.CONFLICT;
-        const target = (exception.meta?.target as string[]) || [];
+        const target = (prismaErr.meta?.target as string[]) || [];
         message = `Duplicate value: ${target.join(', ')} already exists`;
-      } else if (exception.code === 'P2025') {
+      } else if (prismaErr.code === 'P2025') {
         status = HttpStatus.NOT_FOUND;
         message = 'Record not found';
       } else {
         status = HttpStatus.BAD_REQUEST;
         message = 'Database operation failed';
       }
-    } else if (exception instanceof PrismaClientValidationError) {
+    } else if (
+      exception instanceof Prisma.PrismaClientValidationError ||
+      (typeof exception === 'object' && exception !== null && (exception as any).name === 'PrismaClientValidationError')
+    ) {
       status = HttpStatus.BAD_REQUEST;
       message = 'Invalid data provided';
     }
@@ -73,3 +80,4 @@ export class HttpExceptionFilter implements ExceptionFilter {
     });
   }
 }
+

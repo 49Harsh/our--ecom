@@ -64,13 +64,37 @@ import { HealthModule } from './modules/health/health.module';
 
     // ─── Job Queues ───────────────────────────────────────────────────────────
     BullModule.forRootAsync({
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD') || undefined,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (redisUrl) {
+          try {
+            const url = new URL(redisUrl);
+            return {
+              redis: {
+                host: url.hostname,
+                port: Number(url.port) || 6379,
+                password: url.password || undefined,
+                tls: url.protocol === 'rediss:' ? { rejectUnauthorized: false } : undefined,
+              },
+            };
+          } catch {
+            return {
+              redis: {
+                host: configService.get('REDIS_HOST', 'localhost'),
+                port: configService.get<number>('REDIS_PORT', 6379),
+                password: configService.get('REDIS_PASSWORD') || undefined,
+              },
+            };
+          }
+        }
+        return {
+          redis: {
+            host: configService.get('REDIS_HOST', 'localhost'),
+            port: configService.get<number>('REDIS_PORT', 6379),
+            password: configService.get('REDIS_PASSWORD') || undefined,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 

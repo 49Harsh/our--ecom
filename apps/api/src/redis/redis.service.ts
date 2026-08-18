@@ -8,17 +8,30 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   public client: Redis;
 
   constructor(private readonly configService: ConfigService) {
-    this.client = new Redis({
-      host: this.configService.get('REDIS_HOST', 'localhost'),
-      port: this.configService.get<number>('REDIS_PORT', 6379),
-      password: this.configService.get('REDIS_PASSWORD') || undefined,
-      retryStrategy: (times) => {
-        if (times > 3) return null; // stop retrying after 3 attempts
-        return Math.min(times * 200, 2000);
-      },
-      enableOfflineQueue: false, // fail fast instead of queuing
-      lazyConnect: true,         // don't connect until first command
-    });
+    const redisUrl = this.configService.get<string>('REDIS_URL');
+    if (redisUrl) {
+      this.client = new Redis(redisUrl, {
+        retryStrategy: (times) => {
+          if (times > 3) return null;
+          return Math.min(times * 200, 2000);
+        },
+        enableOfflineQueue: false,
+        lazyConnect: true,
+        tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+      });
+    } else {
+      this.client = new Redis({
+        host: this.configService.get('REDIS_HOST', 'localhost'),
+        port: this.configService.get<number>('REDIS_PORT', 6379),
+        password: this.configService.get('REDIS_PASSWORD') || undefined,
+        retryStrategy: (times) => {
+          if (times > 3) return null;
+          return Math.min(times * 200, 2000);
+        },
+        enableOfflineQueue: false,
+        lazyConnect: true,
+      });
+    }
   }
 
   async onModuleInit() {

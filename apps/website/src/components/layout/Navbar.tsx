@@ -6,11 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ShoppingBag, Heart, User, Menu, X,
-  ChevronDown, LogOut, Package, MapPin, Settings,
+  ChevronDown, LogOut, Package, MapPin,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categoriesApi, cartApi, usersApi } from '@/lib/api';
-import { GoogleIcon } from '@/components/ui/GoogleIcon';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface Category {
@@ -222,12 +221,6 @@ function MobileDrawer({
                 <div className="flex flex-col gap-2">
                   <Link href="/auth/login" className="btn btn-primary text-center">Sign In</Link>
                   <Link href="/auth/register" className="btn btn-outline text-center">Create Account</Link>
-                  <a
-                    href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
-                    className="btn btn-outline text-center gap-2"
-                  >
-                    <GoogleIcon className="w-4 h-4" /> Continue with Google
-                  </a>
                 </div>
               )}
             </div>
@@ -312,10 +305,10 @@ function UserDropdown({ user, onLogout }: { user: any; onLogout: () => void }) {
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const qc = useQueryClient();
   const [searchOpen, setSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
   // Scroll detection
   useEffect(() => {
@@ -324,19 +317,19 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Load user from localStorage — only on mount, not on every route change
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (token) {
-      usersApi.getMe()
-        .then((res) => setUser(res.data?.data ?? res.data))
-        .catch(() => {
-          // Token invalid — clear silently, no redirect
-          setUser(null);
-        });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount
+  // ── User via React Query (cached across refreshes) ──────────────────────
+  const isLoggedIn =
+    typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
+
+  const { data: meData } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: () => usersApi.getMe(),
+    enabled: isLoggedIn,
+    staleTime: 5 * 60_000,
+    retry: false,
+    throwOnError: false,
+  });
+  const user: any = meData?.data?.data ?? meData?.data ?? null;
 
   // Lock body scroll when drawer open
   useEffect(() => {
@@ -378,10 +371,10 @@ export default function Navbar() {
     }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    setUser(null);
+    qc.clear();
     router.push('/');
     router.refresh();
-  }, [router]);
+  }, [router, qc]);
 
   // Keyboard shortcut: Cmd+K / Ctrl+K for search
   useEffect(() => {
@@ -530,14 +523,6 @@ export default function Navbar() {
                 >
                   Sign In
                 </Link>
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
-                  className="p-2 rounded-md text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
-                  aria-label="Continue with Google"
-                  title="Continue with Google"
-                >
-                  <GoogleIcon className="w-5 h-5" />
-                </a>
                 <Link
                   href="/auth/register"
                   className="btn btn-primary !py-1.5 !px-4 text-xs"

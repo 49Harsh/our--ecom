@@ -10,6 +10,8 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
 
+const GOOGLE_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`;
+
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -132,7 +134,7 @@ export default function LoginPage() {
           </div>
 
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
+            href={GOOGLE_AUTH_URL}
             className="btn btn-outline w-full gap-2"
           >
             <GoogleIcon className="w-4 h-4" />
@@ -150,3 +152,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

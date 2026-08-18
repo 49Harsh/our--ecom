@@ -9,13 +9,14 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "start": "turbo run start",
+    "start": "npm --prefix apps/api run start:prod",
+    "start:prod": "npm --prefix apps/api run start:prod",
     "lint": "turbo run lint",
-    "api:dev": "yarn workspace api start:dev",
-    "api:build": "yarn workspace api build",
-    "api:start": "yarn workspace api start:prod",
-    "web:dev": "yarn workspace website dev",
-    "web:build": "yarn workspace website build"
+    "api:dev": "npm --prefix apps/api run start:dev",
+    "api:build": "npm --prefix apps/api run build",
+    "api:start": "npm --prefix apps/api run start:prod",
+    "web:dev": "npm --prefix apps/website run dev",
+    "web:build": "npm --prefix apps/website run build"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

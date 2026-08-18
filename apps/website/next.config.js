@@ -16,7 +16,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'https://roshe-api.onrender.com/api/v1'}/:path*`,
       },
     ];
   },

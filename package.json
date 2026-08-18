@@ -1,0 +1,27 @@
+{
+  "name": "r-ecom",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "api:dev": "yarn workspace api start:dev",
+    "api:build": "yarn workspace api build",
+    "api:start": "yarn workspace api start:prod",
+    "web:dev": "yarn workspace website dev",
+    "web:build": "yarn workspace website build"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "yarn@1.22.22"
+}

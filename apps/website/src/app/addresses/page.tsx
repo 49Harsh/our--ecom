@@ -5,9 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, MapPin, Loader2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Loader2, X, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { usersApi } from '@/lib/api';
 import { Skeleton } from '@/components/ui/Skeleton';
+import AuthPromptModal from '@/components/ui/AuthPromptModal';
 
 const schema = z.object({
   fullName: z.string().min(2),
@@ -118,15 +120,9 @@ export default function AddressesPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      // safe initialization check
-    }
-  });
-
-  // Set mount status on load
   const [isMounted, setIsMounted] = useState(false);
   useState(() => {
     if (typeof window !== 'undefined') {
@@ -146,18 +142,55 @@ export default function AddressesPage() {
   const addresses: any[] = data?.data?.data ?? data?.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (d: FormData) => usersApi.createAddress(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['addresses'] }); setShowForm(false); },
+    mutationFn: (d: FormData) => {
+      if (!localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+        throw new Error('Please sign in or create an account to save address.');
+      }
+      return usersApi.createAddress(d);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['addresses'] });
+      setShowForm(false);
+      setErrorMessage('');
+    },
+    onError: (err: any) => {
+      if (err?.response?.status === 401 || !localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+      } else {
+        setErrorMessage(err?.response?.data?.message || 'Failed to save address');
+      }
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<FormData> }) => usersApi.updateAddress(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['addresses'] }); setEditId(null); },
+    mutationFn: ({ id, data }: { id: string; data: Partial<FormData> }) => {
+      if (!localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+        throw new Error('Please sign in or create an account to update address.');
+      }
+      return usersApi.updateAddress(id, data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['addresses'] });
+      setEditId(null);
+      setErrorMessage('');
+    },
+    onError: (err: any) => {
+      if (err?.response?.status === 401 || !localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+      } else {
+        setErrorMessage(err?.response?.data?.message || 'Failed to update address');
+      }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => usersApi.deleteAddress(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['addresses'] }),
+    onError: (err: any) => {
+      if (err?.response?.status === 401) setShowAuthModal(true);
+    },
   });
 
   if (!isMounted) {
@@ -166,6 +199,31 @@ export default function AddressesPage() {
         <h1 className="font-serif text-2xl font-bold text-black mb-8">My Addresses</h1>
         <div className="space-y-4">
           {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in view
+  if (!token) {
+    return (
+      <div className="container-site py-12 lg:py-20 max-w-lg text-center">
+        <div className="card p-8 shadow-sm border border-gray-100">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock size={26} />
+          </div>
+          <h1 className="font-serif text-2xl font-bold text-gray-900 mb-2">Sign in to view addresses</h1>
+          <p className="text-sm text-gray-600 mb-6">
+            Please sign in to your account or create a new one to save and manage your delivery addresses.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Link href="/auth/login?redirect=/addresses" className="btn btn-primary w-full">
+              Sign In
+            </Link>
+            <Link href="/auth/register?redirect=/addresses" className="btn btn-outline w-full">
+              Create Account
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -263,6 +321,15 @@ export default function AddressesPage() {
           ))}
         </div>
       )}
+
+      {/* Login Prompt Modal */}
+      <AuthPromptModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign In Required"
+        message="Please sign in or create an account to save your address."
+        redirectUrl="/addresses"
+      />
     </div>
   );
 }

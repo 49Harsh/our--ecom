@@ -12,6 +12,7 @@ import { loadRazorpayScript, openRazorpay } from '@/lib/razorpay';
 import { formatPrice } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
+import AuthPromptModal from '@/components/ui/AuthPromptModal';
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Required'),
@@ -32,6 +33,7 @@ export default function CheckoutPage() {
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
   const [error, setError] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -75,19 +77,41 @@ export default function CheckoutPage() {
   });
 
   const addAddressMutation = useMutation({
-    mutationFn: (d: AddressForm) => usersApi.createAddress(d),
+    mutationFn: (d: AddressForm) => {
+      if (!localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+        throw new Error('Please sign in or create an account to save your address.');
+      }
+      return usersApi.createAddress(d);
+    },
     onSuccess: (res) => {
       const newAddr = res.data?.data ?? res.data;
       qc.invalidateQueries({ queryKey: ['addresses'] });
       setSelectedAddressId(newAddr.id);
       setShowNewAddress(false);
       reset();
+      setError('');
+    },
+    onError: (err: any) => {
+      if (err?.response?.status === 401 || !localStorage.getItem('accessToken')) {
+        setShowAuthModal(true);
+        setError('Please sign in or create an account to save your delivery address.');
+      } else {
+        setError(err?.response?.data?.message || 'Failed to save address');
+      }
     },
   });
 
   // Handles both COD and Razorpay
   const handlePlaceOrder = async () => {
     setError('');
+
+    if (!localStorage.getItem('accessToken')) {
+      setShowAuthModal(true);
+      setError('Please sign in or create an account to complete your order.');
+      return;
+    }
+
     const addrId =
       selectedAddressId ??
       addresses.find((a: any) => a.isDefault)?.id ??
@@ -453,6 +477,15 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Login Prompt Modal */}
+      <AuthPromptModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Sign In to Continue"
+        message="Please sign in or create an account to save your address and complete your checkout."
+        redirectUrl="/checkout"
+      />
     </div>
   );
 }
